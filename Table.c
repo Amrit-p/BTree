@@ -12,9 +12,16 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include "Tree.h"
+#define UINT8_COUNT (UINT8_MAX + 1)
 
 Table *init_table(char *name, Attributes *attributes)
 {
+    size_t table_name_len = strlen(name);
+    if (table_name_len > UINT8_COUNT)
+    {
+        fprintf(stderr, "Error: cannot have table name more than %d characters\n", UINT8_COUNT);
+        exit(1);
+    }
     Table *table = calloc(1, sizeof(Table));
     char *buff = calloc(strlen(name) + strlen(TABLE_SUFIX) + 1, sizeof(char));
     strcpy(buff, name);
@@ -50,9 +57,9 @@ Table *init_table(char *name, Attributes *attributes)
         return NULL;
     }
     // dumping table name
-    size_t table_name_len = strlen(table->name);
-    write(table->pager->fd, &table_name_len, sizeof(size_t));
-    write(table->pager->fd, table->name, table_name_len);
+    uint8_t name_len = (table_name_len & 0xff);
+    write(table->pager->fd, &table_name_len, sizeof(uint8_t));
+    write(table->pager->fd, table->name, name_len);
 
     // dumping attributes
     write(table->pager->fd, &(array_size(table->attributes)), sizeof(size_t));
@@ -138,8 +145,8 @@ Table *table_read_file(char *file_path)
         return NULL;
     }
 
-    size_t table_name_len;
-    fread(&table_name_len, sizeof(size_t), 1, fd);
+    uint8_t table_name_len;
+    fread(&table_name_len, sizeof(uint8_t), 1, fd);
     char *table_name = calloc(table_name_len + 1, sizeof(char));
     fread(table_name, sizeof(char), table_name_len, fd);
 
